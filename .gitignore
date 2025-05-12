@@ -7,3 +7,4 @@ radarr-config/
 recommendarr-data/
 sonarr-config/
 .env
+media/
