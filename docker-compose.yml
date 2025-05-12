@@ -1,0 +1,191 @@
+version: "3.9"
+name: media-stack
+services:
+  ## Check container for credentials of qBittorrent
+  ## Change password after install from UI --> Tools --> Options --> WebUI ##
+  qbittorrent:
+    container_name: qbittorrent
+    image: lscr.io/linuxserver/qbittorrent:5.0.4
+    networks:               
+      - mynetwork           
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ}
+      - WEBUI_PORT=5080
+    volumes:
+      - ./qbittorrent-config:/config
+      - ${MEDIA_PATH}/qbittorrent/downloads:/downloads
+    ports:
+      - 5080:5080
+      - 6881:6881
+      - 6881:6881/udp
+    restart: "unless-stopped"
+
+  radarr:
+    container_name: radarr
+    image: lscr.io/linuxserver/radarr:5.21.1
+    networks:
+      - mynetwork
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ}
+    ports:
+      - 7878:7878
+    volumes:
+      - ./radarr-config:/config
+      - ${MEDIA_PATH}/radarr/movies:/movies
+      - ${MEDIA_PATH}/qbittorrent/downloads:/downloads
+    restart: "unless-stopped"
+
+  sonarr:
+    image: linuxserver/sonarr:4.0.14
+    container_name: sonarr
+    networks:
+      - mynetwork
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ}
+    volumes:
+      - ./sonarr-config:/config      
+      - ${MEDIA_PATH}/sonarr/tv:/tv
+      - ${MEDIA_PATH}/sonarr/anime:/anime
+      - ${MEDIA_PATH}/qbittorrent/downloads:/downloads
+    ports:
+      - 8989:8989
+    restart: unless-stopped
+
+  prowlarr:
+    container_name: prowlarr
+    image: linuxserver/prowlarr:1.32.2
+    networks:               
+      - mynetwork      
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ}
+    volumes:
+      - ./prowlarr-config:/config
+    ports:
+      - 9696:9696
+    restart: unless-stopped
+  
+  flaresolverr:
+    container_name: flaresolverr
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    networks:
+      - mynetwork
+
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_HTML=${LOG_HTML:-false}
+      - CAPTCHA_SOLVER=${CAPTCHA_SOLVER:-none}
+      - TZ=${TZ}
+      #- LANG=fr_FR
+      #- LANG=en_US
+    ports:
+      - 8191:8191
+    restart: unless-stopped
+
+  recommendarr:
+    container_name: recommendarr
+    image: tannermiddleton/recommendarr:v1.3.0
+    networks:
+      - mynetwork
+    environment:
+      - NODE_ENV=production
+      - DOCKER_ENV=true
+      - PORT=3000
+      - PUBLIC_URL=https://localhost:3000 # Change this public URL if you are accessing recommendarr on a domain
+    volumes:
+      - ./recommendarr-data:/app/server/data
+    ports:
+      - 3000:3000
+    restart: unless-stopped
+
+  jellyseerr:
+    image: fallenbagel/jellyseerr:2.5.2
+    container_name: jellyseerr
+    networks:
+      - mynetwork
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ}
+    volumes:
+      - ./jellyseerr-config:/app/config
+    ports:
+      - 5055:5055
+    restart: unless-stopped
+
+  jellyfin:
+    image: linuxserver/jellyfin:10.10.6
+    container_name: jellyfin
+    networks:
+      - mynetwork
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ}
+    volumes:
+      - ./jellyfin-config:/config
+      - ${MEDIA_PATH}/sonarr/tv:/data/tvshows
+      - ${MEDIA_PATH}/radarr/movies:/data/movies
+      - ${MEDIA_PATH}/sonarr/anime:/data/anime
+      - ${MEDIA_PATH}/qbittorrent/downloads:/data/media_downloads
+  # devices:
+   #  - /dev/videoN:/dev/videoN # Mount GPU device 
+    ports:
+      - 8096:8096
+      - 7359:7359/udp
+      - 8920:8920
+    restart: unless-stopped
+  
+  
+  # Doc: https://github.com/navilg/cleanmyarr
+  # cleanmyarr:
+  #   profiles: ["vpn", "no-vpn"]
+  #   depends_on:
+  #     - radarr
+  #     - sonarr
+  #   image: linuxshots/cleanmyarr:0.8.1
+  #   container_name: cleanmyarr
+  #   networks:
+  #     - mynetwork
+  #   volumes:
+  #     - cleanmyarr-config:/config
+    # restart: unless-stopped
+    # environment:
+    # - CMA_MAINTENANCE_CYCLE=${CMA_MAINTENANCE_CYCLE:-""}
+    # - CMA_DELETE_AFTER_DAYS=${CMA_DELETE_AFTER_DAYS:-""}
+    # - CMA_ENABLE_EMAIL_NOTIFICATION=${CMA_ENABLE_EMAIL_NOTIFICATION:-""}
+    # - CMA_SMTP_USERNAME=${CMA_SMTP_USERNAME:-""}
+    # - CMA_SMTP_ENCODED_PASSWORD=${CMA_SMTP_ENCODED_PASSWORD:-""}
+    # - CMA_SMTP_TO_EMAILS=${CMA_SMTP_TO_EMAILS:-""}
+    # - CMA_ENABLE_GOTIFY_NOTIFICATION=${CMA_ENABLE_GOTIFY_NOTIFICATION:-""}
+    # - CMA_GOTIFY_URL=${CMA_GOTIFY_URL:-""}
+    # - CMA_GOTIFY_ENCODED_APP_TOKEN=${CMA_GOTIFY_ENCODED_APP_TOKEN:-""}
+    # - CMA_ENABLE_TELEGRAM_NOTIFICATION=${CMA_ENABLE_TELEGRAM_NOTIFICATION:-""}
+    # - CMA_TELEGRAM_ENCODED_BOT_TOKEN=${CMA_TELEGRAM_ENCODED_BOT_TOKEN:-""}
+    # - CMA_TELEGRAM_CHAT_ID=${CMA_TELEGRAM_CHAT_ID:-""}
+    # - CMA_MONITOR_RADARR=${CMA_MONITOR_RADARR:-""}
+    # - CMA_RADARR_URL=${CMA_RADARR_URL:-""}
+    # - CMA_RADARR_ENCODED_API_KEY=${CMA_RADARR_ENCODED_API_KEY:-""}
+    # - CMA_RADARR_ENABLE_NOTIFICATION=${CMA_RADARR_ENABLE_NOTIFICATION:-""}
+
+volumes:
+  torrent-downloads:
+  radarr-config:
+  sonarr-config:
+  prowlarr-config:
+  jellyfin-config:
+  qbittorrent-config:
+  jellyseerr-config:
+  recommendarr-data:
+  # cleanmyarr-config:
+
+networks:
+  mynetwork:
+    external: true

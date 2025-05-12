@@ -1,0 +1,9 @@
+gluetun/
+jellyfin-config/
+jellyseerr-config/
+prowlarr-config/
+qbittorrent-config/
+radarr-config/
+recommendarr-data/
+sonarr-config/
+.env
