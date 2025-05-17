@@ -1,3 +1,26 @@
+# Важно: запуск с сервера, проброс портов и выбор режима
+
+Если ты запускаешь сервисы на сервере (не на локалке), обязательно пробрось нужные порты через firewall/VSCode/ssh:
+- 7878 (Radarr)
+- 8989 (Sonarr)
+- 9696 (Prowlarr)
+- 5080 (qBittorrent)
+- 8096 (Jellyfin)
+- 5055 (Jellyseerr)
+- 3000 (Recommendarr)
+- 8191 (Flaresolverr)
+
+## Два режима запуска
+- **Обычный**: `docker-compose.yml` — весь трафик идёт напрямую
+- **VPN**: `docker-compose-vpn.yml` — весь торрент-трафик идёт через VPN (Wireguard)
+
+### Почему лучше через VPN?
+- Многие торрент-трекеры и индексы (особенно через Prowlarr) банят/ограничивают IP серверов, часто из-за Cloudflare или других антиабуз систем
+- VPN позволяет обойти блокировки, не светить свой серверный IP и не ловить DMCA/abuse
+- Без VPN часть индексов может не работать вообще
+
+---
+
 ### Клонируем проект и создаем пустой `.env`
 ```bash
 git clone https://github.com/brintadis/jellyfin_server.git
@@ -44,10 +67,11 @@ docker compose -f docker-compose.yml up -d
 docker compose -f docker-compose-vpn.yml up -d
 ```
 
-## qBittorrent
-`http://localhost:5080`
+## [qBittorrent](http://localhost:5080)
 
-Default username is admin. Temporary password can be collected from container log `docker logs qbittorrent`
+Для управления qBittorrent заходи в WEB-интерфейс: http://localhost:5080
+
+Временный пароль можно получить из логов контейнера `docker logs qbittorrent`
 
 logs example
 ```bash
@@ -61,8 +85,8 @@ Connection to localhost (::1) 5080 port [tcp/*] succeeded!
 ```
 ![qbit_auth](src/img/qbit_auth.png)
 
-
-Go to Tools --> Options --> WebUI --> Change password
+Заменяем пароль:
+Tools --> Options --> WebUI --> Change password
 
 ![qbit_pass_change](src/img/qbit_pass_change.png)
 
@@ -86,9 +110,7 @@ mkdir /downloads/radarr /downloads/sonarr
 chown 1000:1000 /downloads/radarr /downloads/sonarr
 ```
 
-`http://localhost:5080`
-
-Возвращаеся в браузер и добавляем новые категории
+Возвращаеся в WEBUI и добавляем новые категории
 
 ![qbit_category_webui](src/img/qbit_category_webui.png)
 
@@ -111,8 +133,7 @@ Save path:
 ```
 
 
-## Radarr
-WEBUI `http://localhost:7878`
+## [Radarr](http://localhost:7878)
 
 ```bash
 docker exec -it radarr bash
@@ -126,32 +147,36 @@ chown 1000:1000 /movies
 `Authentication Method`, `Username`, `Password`(write it down, we will be need this for othre services configuration)
 ![radarr_init_page](src/img/radarr_init_page.png)
 
-### Radarr Media Management
-`http://localhost:7878/settings/mediamanagement`
+### [Radarr Settings Media Management](http://localhost:7878/settings/mediamanagement)
 
 Меняем настройки Media management, добавляем нашу папку с movies
 ![radarr_settings_media](src/img/radarr_settings_media.png)
 
-### Radarr Quality
-`http://localhost:7878/settings/quality`
+### [Radarr Settings Quality](http://localhost:7878/settings/quality)
 
 Настройки для этой страницы брать из [этого](https://trash-guides.info/Radarr/Radarr-Quality-Settings-File-Size/) гайда
 
-### Radarr Download Clients
-`http://localhost:7878/settings/downloadclients`
+### [Radarr Download Clients](http://localhost:7878/settings/downloadclients)
 
-Подключаем Radarr к qBittorrent,
-`если был выбран VPN вариант, то в host указываем vpn`
+<details>
+<summary>VPN вариант</summary>
+
+```VPN
+http://qbittorrent:5080 -> http://vpn:5080
+```
+</details>
+
 ![radarr_settings_download_clients](src/img/radarr_settings_download_clients.png)
 
-### Radarr General
-`http://localhost:7878/settings/general`
+### [Radarr General](http://localhost:7878/settings/general)
 
-На этой странице видим `API ключ` к Radarr, он нам пригодиться позже
+На этой странице видим [API ключ](http://localhost:7878/settings/general#:~:text=Password%20Confirmation-,API,-Key) к Radarr, он нам пригодиться позже
+
+Radarr API Key берём [здесь](http://localhost:7878/settings/general#:~:text=Password%20Confirmation-,API,-Key)
 
 
 ## Sonarr
-WEBUI `http://localhost:8989`
+WEBUI [Sonarr](http://localhost:8989)
 
 ```bash
 docker exec -it sonarr bash
@@ -164,8 +189,7 @@ chown 1000:1000 /tv /anime
 Открываем WEBUI, регистрируемся.
 `Authentication Method`, `Username`, `Password`(write it down, we will be need this for othre services configuration)
 
-### Sonarr Media Management
-`http://localhost:8989/settings/mediamanagement`
+### [Sonarr Settings Media Management](http://localhost:8989/settings/mediamanagement)
 
 Меняем настройки Media management, добавляем нашу папку с movies:
 1)Episode Naming
@@ -179,48 +203,166 @@ chown 1000:1000 /tv /anime
 
 Вверху страницы сохраняем изменения `Save Changes`
 
-### Sonarr Quality
-`http://localhost:8989/settings/quality`
+### [Sonarr Settings Quality](http://localhost:8989/settings/quality)
+
 
 Настройки для этой страницы брать из [этого](https://trash-guides.info/Radarr/Radarr-Quality-Settings-File-Size/) гайда
 
-### Sonarr Download Clients
-`http://localhost:8989/settings/downloadclients`
+### [Sonarr Download Clients](http://localhost:8989/settings/downloadclients)
 
 Подключаем Sonarr к qBittorrent, 
 `если был выбран VPN вариант, то в host указываем vpn`
 
 
-### Radarr General
-`http://localhost:7878/settings/general`
+### [Sonarr General](http://localhost:8989/settings/general)
 
-На этой странице видим `API ключ` к Sonarr, он нам пригодиться позже
+На этой странице видим [API ключ](http://localhost:8989/settings/general#:~:text=Password%20Confirmation-,API,-Key) к Sonarr, он нам пригодится позже
+
+Sonarr API Key берём [здесь](http://localhost:8989/settings/general#:~:text=Password%20Confirmation-,API,-Key)
 
 
 
-## Sonarr
-WEBUI `http://localhost:9696`
+## [Prowlarr](http://localhost:9696)
+
+<details>
+<summary>VPN вариант</summary>
+
+```VPN
+WEBUI `http://vpn:9696`
+```
+</details>
 
 Проходим регистрацию, аналогичную radarr, sonarr
 
+<details>
+<summary>VPN вариант</summary>
+
+### [Prowlar Flaresolver](http://localhost:9696/settings/indexers)
+Подключаемся к flaresolverr
+![prowlar_settings_add_flaresolverr](src/img/prowlar_settings_add_flaresolverr.png)
+</details>
 
 
+### Prowlar Radarr
+Подключаемся к [Radarr](http://localhost:9696/settings/applications)
+
+<details>
+<summary>VPN вариант</summary>
+
+```VPN
+http://prowlarr:9696 -> http://vpn:9696
+```
+</details>
+
+![prowlar_settings_add_radarr1](src/img/prowlar_settings_add_radarr1.png)
+
+Radarr API Key берем [здесь](http://localhost:7878/settings/general#:~:text=Password%20Confirmation-,API,-Key)
+
+<details>
+<summary>VPN вариант</summary>
+
+```VPN
+Заменяем IP Radarr сервера на указанный в ` .env`
+http://radarr:7878 -> http://RADARR_STATIC_CONTAINER_IP:7878
+```
+</details>
+
+![prowlar_settings_add_radarr2](src/img/prowlar_settings_add_radarr2.png)
+
+### Prowlar Sonarr
+Подключаемся к [Sonarr](http://localhost:9696/settings/applications)
 
 
+<details>
+<summary>VPN вариант</summary>
+
+```VPN
+http://prowlarr:9696 -> http://vpn:9696
+```
+</details>
+
+![prowlar_settings_add_sonarr1](src/img/prowlar_settings_add_sonarr1.png)
+
+<details>
+<summary>VPN вариант</summary>
+
+```VPN
+Заменяем IP Sonarr сервера на указанный в `.env`
+http://sonarr:8989 -> http://SONARR_STATIC_CONTAINER_IP:8989
+```
+</details>
+
+Sonarr API Key берем [здесь](http://localhost:8989/settings/general#:~:text=Password%20Confirmation-,API,-Key)
+
+![prowlar_settings_add_sonarr2](src/img/prowlar_settings_add_sonarr2.png)
+
+### [Prowlar Indexers](http://localhost:9696/)
+Добавляем трекеры
+
+![prowlar_add_indexer1](src/img/prowlar_add_indexer1.png)
+
+Фильтрация по языку и добавляем нужные трекеры
+![prowlar_add_indexer2](src/img/prowlar_add_indexer2.png)
+
+Указываем BASE URL из выпадающего списка, username, password, а также включаем
+`Strip Russian letters` и
+`Use Magnet Links`
+
+После добавления всех нужных трекеров делаем синхронизацию с Radarr, Sonarr
+
+![prowlar_sync_indexers](src/img/prowlar_sync_indexers.png)
+
+и проверяем что в [Radarr](http://localhost:7878/settings/indexers) и [Sonarr](http://localhost:8989/settings/indexers) появились нужные
+
+## [Jellyfin](http://localhost:8096/web)
+
+```bash
+docker exec -it jellyfin bash
+```
+
+```bash
+chown 1000:1000 /data/movies data/tvshows data/anime
+```
+Выбираем язык UI
+![jellyfin_init1](src/img/jellyfin_init1.png)
+Создаем учетку в Jellyfin
+![jellyfin_init2](src/img/jellyfin_init2.png)
+Добавляем нужные папки с медиа
+![jellyfin_init3_folder_movie](src/img/jellyfin_init3_folder_movie.png)
+![jellyfin_init3_folder_tv](src/img/jellyfin_init3_folder_tv.png)
+![jellyfin_init3_folder_anime](src/img/jellyfin_init3_folder_anime.png)
+![jellyfin_init3_folder_all](src/img/jellyfin_init3_folder_all.png)
+
+### Jellyfin Plugins
+Добавить Subtitles downloader, metadata, skinmanager и тд
 
 
+## [Jellyseerr](http://localhost:5055/)
+
+![jellyseerr_init1](src/img/jellyseerr_init1.png)
+
+Указываем jellyfin:8096 и авторизуемся в наш аккаунт
+
+Нажимаем Sync Libraries и активируем найденные папки.
+
+![jellyseerr_init1](src/img/jellyseerr_init3.png)
+
+Подключаемся к Radarr API Key берем [здесь](http://localhost:7878/settings/general#:~:text=Password%20Confirmation-,API,-Key)
+
+![jellyseerr_init4_add_radarr1](src/img/jellyseerr_init4_add_radarr1.png)
+![jellyseerr_init4_add_radarr2](src/img/jellyseerr_init4_add_radarr2.png)
+
+Подключаемся к Sonarr API Key берем [здесь](http://localhost:8989/settings/general#:~:text=Password%20Confirmation-,API,-Key)
 
 
-
-
-
-
+![jellyseerr_init4_add_sonarr1](src/img/jellyseerr_init4_add_sonarr1.png)
+![jellyseerr_init4_add_sonarr2](src/img/jellyseerr_init4_add_sonarr2.png)
 # FAQ
 Q: Вижу ошибку`network mynetwork declared as external, but could not be found`
 A: Забыли создать сеть `mynetwork`
 
 Q: При создании сети получаю ошибку `Error response from daemon: invalid pool request: Pool overlaps with other one on this address space`
-A: Значит сеть с таким адресом уже существует на вашем сервере. Попробуйте изменить 
+A: Значит сеть с таким адресом уже существует на вашем сервере. Попробуйте изменить IP
 ```
 docker network create --subnet 172.20.0.0/16 mynetwork
 ```
